@@ -6,10 +6,12 @@ import "google/protobuf/timestamp.proto";
 package vibelog.proxy;
 
 // Mid-tier contract — the gateway only ever talks to this service.
+// `Analyze` is the public entry point: it runs the analyzer logic and
+// persists the resulting record through the database service in one hop.
 service RpcLogsProxyService {
+  rpc Analyze       (RpcAnalyzeRequest)            returns (RpcLogAnalysis);
   rpc ListAnalyses  (google.protobuf.Empty)        returns (RpcAnalysesList);
   rpc GetAnalysis   (RpcAnalysisId)                returns (RpcLogAnalysis);
-  rpc SaveAnalysis  (RpcSaveAnalysisRequest)       returns (RpcLogAnalysis);
   rpc DeleteAnalysis(RpcAnalysisId)                returns (RpcDeleteResult);
 }
 
@@ -18,6 +20,10 @@ enum LogCategory {
   INFO                     = 1;
   WARNING                  = 2;
   ERROR                    = 3;
+}
+
+message RpcAnalyzeRequest {
+  string raw_logs = 1;
 }
 
 message RpcAnalysisId {
@@ -35,13 +41,6 @@ message RpcLogAnalysis {
 
 message RpcAnalysesList {
   repeated RpcLogAnalysis analyses = 1;
-}
-
-message RpcSaveAnalysisRequest {
-  string      raw_logs           = 1;
-  string      summary            = 2;
-  LogCategory category           = 3;
-  string      recommended_action = 4;
 }
 
 message RpcDeleteResult {

@@ -12,6 +12,10 @@ class Settings:
     database_service_address: str = os.getenv(
         "DATABASE_SERVICE_ADDRESS", "127.0.0.1:5001"
     )
+    # AI simulation delay (seconds). Override to 0 in tests.
+    analyzer_latency_seconds: float = float(
+        os.getenv("PROXY_ANALYZER_LATENCY_SECONDS", "1.0")
+    )
 
 
 settings = Settings()

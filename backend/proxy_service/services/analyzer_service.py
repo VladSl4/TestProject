@@ -10,8 +10,12 @@ from __future__ import annotations
 import re
 import time
 
-from gateway.interfaces.analyzer_service import AbstractAnalyzerService
-from gateway.models.analysis_dtos import AnalysisInsight, LogCategoryDto
+import proxy_analyses_pb2 as proxy_pb
+
+from proxy_service.interfaces.analyzer_service import (
+    AbstractAnalyzerService,
+    AnalysisInsight,
+)
 
 
 _ERROR_PATTERN = re.compile(
@@ -42,7 +46,7 @@ class AnalyzerService(AbstractAnalyzerService):
         warnings = [line for line in lines if _WARNING_PATTERN.search(line)]
 
         if errors:
-            category = LogCategoryDto.ERROR
+            category = proxy_pb.ERROR
             summary = (
                 f"{len(errors)} error{'s' if len(errors) != 1 else ''} detected "
                 f"across {total} log line{'s' if total != 1 else ''}. "
@@ -54,7 +58,7 @@ class AnalyzerService(AbstractAnalyzerService):
                 "introduced the regression."
             )
         elif warnings:
-            category = LogCategoryDto.WARNING
+            category = proxy_pb.WARNING
             summary = (
                 f"{len(warnings)} warning{'s' if len(warnings) != 1 else ''} found "
                 f"across {total} log line{'s' if total != 1 else ''}. "
@@ -66,11 +70,11 @@ class AnalyzerService(AbstractAnalyzerService):
                 "escalates."
             )
         elif total == 0:
-            category = LogCategoryDto.INFO
+            category = proxy_pb.INFO
             summary = "No log content provided."
             recommended_action = "Paste at least one log line to receive an analysis."
         else:
-            category = LogCategoryDto.INFO
+            category = proxy_pb.INFO
             summary = (
                 f"{total} log line{'s' if total != 1 else ''} processed. "
                 "No errors or warnings detected — system appears nominal."

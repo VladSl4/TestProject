@@ -12,10 +12,6 @@ class Settings:
     proxy_service_address: str = os.getenv(
         "PROXY_SERVICE_ADDRESS", "127.0.0.1:5002"
     )
-    # AI simulation delay (seconds). Override to 0 in tests.
-    analyzer_latency_seconds: float = float(
-        os.getenv("GATEWAY_ANALYZER_LATENCY_SECONDS", "1.0")
-    )
     cors_origins: list[str] = field(
         default_factory=lambda: os.getenv(
             "GATEWAY_CORS_ORIGINS",

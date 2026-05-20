@@ -16,28 +16,30 @@ frontend talks REST to the gateway.
 │   Frontend   │ ────────► │     gateway      │ ───────► │  proxy_service   │ ───────► │ database_service │
 │ Next.js :3000│           │    REST :8000    │          │    gRPC :5002    │          │ gRPC :5001+SQLite│
 └──────────────┘           └──────────────────┘          └──────────────────┘          └──────────────────┘
-                            • CORS                       • Cross-cutting             • Owns the schema
-                            • Public REST API              concerns (caching,        • Persists analysis
-                            • Analyzer (AI sim)            retries, fan-out)           history
+                            • CORS                       • Analyzer (AI sim)        • Owns the schema
+                            • Public REST API            • Persists results         • Persists analysis
+                            • Pure HTTP↔gRPC bridge        through database tier      history
                             • Typed gRPC client          • gRPC server impl
 ```
 
 Only the gateway speaks REST. The two inner services talk to each other
-entirely over gRPC.
+entirely over gRPC. The gateway holds **zero business logic** — it just
+forwards requests to proxy_service and maps the proto response back to
+the public REST DTO.
 
 ### How the analyzer works
 
-The `AnalyzerService` (in `backend/gateway/services/analyzer_service.py`)
+The `AnalyzerService` (in `backend/proxy_service/services/analyzer_service.py`)
 simulates an LLM call:
 
-1. Sleeps for `GATEWAY_ANALYZER_LATENCY_SECONDS` (default **1.0 s**, the
+1. Sleeps for `PROXY_ANALYZER_LATENCY_SECONDS` (default **1.0 s**, the
    target from the brief).
 2. Splits the raw logs into lines and keyword-matches them against
    `error|exception|fatal|critical|panic|traceback|failed|failure` and
    `warn|warning|deprecated`.
 3. Classifies as **Error** > **Warning** > **Info** (error wins).
-4. Returns `{ summary, category, recommended_action }` and persists the
-   record through proxy → database for the history pane.
+4. Returns `{ summary, category, recommended_action }`. The proxy's
+   `Analyze` RPC immediately persists the result via database_service.
 
 To swap in a real LLM (OpenAI/Anthropic), replace the body of
 `AnalyzerService.analyze` — the interface stays the same.
@@ -54,11 +56,11 @@ backend/
 │   └── gen_protos.py
 │
 ├── database_service/      # SQLite-backed CRUD over analyses
-├── proxy_service/         # Forwards gateway calls to database via gRPC
-├── gateway/               # Public REST API + AnalyzerService (AI sim)
+├── proxy_service/         # Analyzer (AI sim) + forwards to database via gRPC
+├── gateway/               # Public REST API (pure HTTP↔gRPC bridge, no logic)
 └── tests/
     ├── database_service/test_analyses_repository.py
-    └── gateway/test_analyzer_service.py
+    └── proxy_service/test_analyzer_service.py
 
 frontend/
 ├── app/                   # Next.js App Router
@@ -145,8 +147,8 @@ py -3 -m pytest
 ```
 
 Covers (8 tests):
-- `tests/gateway/test_analyzer_service.py` — analyzer logic (empty input,
-  info-only, warning detection, error-wins-over-warning, latency).
+- `tests/proxy_service/test_analyzer_service.py` — analyzer logic (empty
+  input, info-only, warning detection, error-wins-over-warning, latency).
 - `tests/database_service/test_analyses_repository.py` — repository CRUD
   against a temp SQLite file.
 
@@ -181,7 +183,7 @@ GET    /health                 Liveness probe
 
 ```
 database_service -> service vibelog.database.RpcLogsAnalysisService  { List, Get, Save, Delete }
-proxy_service    -> service vibelog.proxy.RpcLogsProxyService        { List, Get, Save, Delete }
+proxy_service    -> service vibelog.proxy.RpcLogsProxyService        { Analyze, List, Get, Delete }
 ```
 
 Browse the contracts under `backend/rpc/protos/`.
@@ -207,6 +209,6 @@ Browse the contracts under `backend/rpc/protos/`.
   Override with `DATABASE_SERVICE_DB_PATH`.
 - Inter-service addresses are env-driven (`DATABASE_SERVICE_ADDRESS`,
   `PROXY_SERVICE_ADDRESS`, `GATEWAY_CORS_ORIGINS`,
-  `GATEWAY_ANALYZER_LATENCY_SECONDS`). Defaults assume localhost.
-- Setting `GATEWAY_ANALYZER_LATENCY_SECONDS=0` removes the simulated
+  `PROXY_ANALYZER_LATENCY_SECONDS`). Defaults assume localhost.
+- Setting `PROXY_ANALYZER_LATENCY_SECONDS=0` removes the simulated
   delay (useful in CI).

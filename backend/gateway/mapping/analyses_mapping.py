@@ -1,4 +1,4 @@
-"""Translation between proxy-tier proto messages and public REST DTOs."""
+"""Translation from proxy-tier proto messages to public REST DTOs."""
 
 from __future__ import annotations
 
@@ -14,12 +14,6 @@ _PROTO_TO_DTO: dict[int, LogCategoryDto] = {
     proxy_pb.WARNING: LogCategoryDto.WARNING,
     proxy_pb.ERROR: LogCategoryDto.ERROR,
 }
-
-_DTO_TO_PROTO: dict[LogCategoryDto, int] = {v: k for k, v in _PROTO_TO_DTO.items()}
-
-
-def category_dto_to_proto(category: LogCategoryDto) -> int:
-    return _DTO_TO_PROTO[category]
 
 
 def category_proto_to_dto(value: int) -> LogCategoryDto:

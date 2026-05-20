@@ -17,6 +17,11 @@ class AnalysesProxyService(proxy_pb_grpc.RpcLogsProxyServiceServicer):
     def __init__(self, service: AbstractProxyAnalysesService) -> None:
         self._service = service
 
+    def Analyze(
+        self, request: proxy_pb.RpcAnalyzeRequest, context
+    ) -> proxy_pb.RpcLogAnalysis:
+        return database_to_proxy(self._service.analyze(request.raw_logs))
+
     def ListAnalyses(self, request: empty_pb2.Empty, context) -> proxy_pb.RpcAnalysesList:
         reply = proxy_pb.RpcAnalysesList()
         reply.analyses.extend(
@@ -26,17 +31,6 @@ class AnalysesProxyService(proxy_pb_grpc.RpcLogsProxyServiceServicer):
 
     def GetAnalysis(self, request: proxy_pb.RpcAnalysisId, context) -> proxy_pb.RpcLogAnalysis:
         return database_to_proxy(self._service.get_analysis(request.id))
-
-    def SaveAnalysis(
-        self, request: proxy_pb.RpcSaveAnalysisRequest, context
-    ) -> proxy_pb.RpcLogAnalysis:
-        saved = self._service.save_analysis(
-            raw_logs=request.raw_logs,
-            summary=request.summary,
-            category=request.category,
-            recommended_action=request.recommended_action,
-        )
-        return database_to_proxy(saved)
 
     def DeleteAnalysis(
         self, request: proxy_pb.RpcAnalysisId, context

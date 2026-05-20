@@ -1,4 +1,8 @@
-"""Public REST endpoints for the VibeLog dashboard."""
+"""Public REST endpoints for the VibeLog dashboard.
+
+Pure HTTP-to-gRPC bridge: every endpoint forwards to proxy_service and
+returns the mapped response. All analysis logic lives in proxy_service.
+"""
 
 from __future__ import annotations
 
@@ -8,12 +12,8 @@ from google.protobuf import empty_pb2
 
 import proxy_analyses_pb2 as proxy_pb
 
-from gateway.dependencies import get_analyzer_service, get_proxy_client
-from gateway.interfaces.analyzer_service import AbstractAnalyzerService
-from gateway.mapping.analyses_mapping import (
-    category_dto_to_proto,
-    proto_to_history_item,
-)
+from gateway.dependencies import get_proxy_client
+from gateway.mapping.analyses_mapping import proto_to_history_item
 from gateway.models.analysis_dtos import (
     AnalysisHistoryItem,
     AnalysisInsight,
@@ -26,28 +26,16 @@ router = APIRouter(prefix="/api", tags=["analyses"])
 @router.post("/analyze", response_model=AnalysisInsight)
 def analyze(
     payload: AnalyzeRequest,
-    analyzer: AbstractAnalyzerService = Depends(get_analyzer_service),
     proxy=Depends(get_proxy_client),
 ) -> AnalysisInsight:
-    insight = analyzer.analyze(payload.raw_logs)
-
-    # Persist the analysis through the proxy -> database pipeline.
-    saved = proxy.SaveAnalysis(
-        proxy_pb.RpcSaveAnalysisRequest(
-            raw_logs=payload.raw_logs,
-            summary=insight.summary,
-            category=category_dto_to_proto(insight.category),
-            recommended_action=insight.recommended_action,
-        )
-    )
-
-    history_item = proto_to_history_item(saved)
+    saved = proxy.Analyze(proxy_pb.RpcAnalyzeRequest(raw_logs=payload.raw_logs))
+    item = proto_to_history_item(saved)
     return AnalysisInsight(
-        id=history_item.id,
-        summary=history_item.summary,
-        category=history_item.category,
-        recommended_action=history_item.recommended_action,
-        created_at=history_item.created_at,
+        id=item.id,
+        summary=item.summary,
+        category=item.category,
+        recommended_action=item.recommended_action,
+        created_at=item.created_at,
     )
 
 
