@@ -1,0 +1,50 @@
+syntax = "proto3";
+
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+
+package vibelog.database;
+
+// Low-level data access for log analyses. Owns the schema; no other service
+// touches storage directly.
+service RpcLogsAnalysisService {
+  rpc ListAnalyses  (google.protobuf.Empty)        returns (RpcAnalysesList);
+  rpc GetAnalysis   (RpcAnalysisId)                returns (RpcLogAnalysis);
+  rpc SaveAnalysis  (RpcSaveAnalysisRequest)       returns (RpcLogAnalysis);
+  rpc DeleteAnalysis(RpcAnalysisId)                returns (RpcDeleteResult);
+}
+
+enum LogCategory {
+  LOG_CATEGORY_UNSPECIFIED = 0;
+  INFO                     = 1;
+  WARNING                  = 2;
+  ERROR                    = 3;
+}
+
+message RpcAnalysisId {
+  int64 id = 1;
+}
+
+message RpcLogAnalysis {
+  int64                     id                  = 1;
+  string                    raw_logs            = 2;
+  string                    summary             = 3;
+  LogCategory               category            = 4;
+  string                    recommended_action  = 5;
+  google.protobuf.Timestamp created_at          = 6;
+}
+
+message RpcAnalysesList {
+  repeated RpcLogAnalysis analyses = 1;
+}
+
+message RpcSaveAnalysisRequest {
+  string      raw_logs           = 1;
+  string      summary            = 2;
+  LogCategory category           = 3;
+  string      recommended_action = 4;
+}
+
+message RpcDeleteResult {
+  bool deleted = 1;
+}
