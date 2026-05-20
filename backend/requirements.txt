@@ -1,0 +1,12 @@
+# Aggregated dependencies for the whole backend.
+# Versions left unpinned to support Python 3.12 / 3.13 / 3.14.
+
+fastapi>=0.115
+uvicorn[standard]>=0.32
+pydantic>=2.10
+
+grpcio>=1.66
+grpcio-tools>=1.66
+protobuf>=5.28
+
+pytest>=8.3
