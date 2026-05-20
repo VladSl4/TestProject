@@ -1,7 +1,7 @@
 """Shared pytest configuration.
 
 Adds the backend root and the generated proto stub directories to
-``sys.path`` so the service packages and stubs import cleanly when pytest
+``sys.path`` so service packages and stubs import cleanly when pytest
 runs from the repo root or from ``backend/``.
 """
 

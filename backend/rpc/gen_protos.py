@@ -2,8 +2,7 @@
 
 Drops generated modules under ``backend/rpc/generated/<service>/``. Every
 service adds the relevant subdirectory to ``sys.path`` at startup so the
-stubs are importable by their flat module names
-(``database_tasks_pb2``, ``proxy_tasks_pb2``, etc.).
+stubs are importable by their flat module names.
 
 Usage (from the repo root)::
 
@@ -40,28 +39,23 @@ def main() -> int:
         return 1
 
     for proto in proto_files:
-        service_dir = proto.parent.name  # e.g. database_service
+        service_dir = proto.parent.name
         out_dir = GENERATED_ROOT / service_dir
         out_dir.mkdir(parents=True, exist_ok=True)
         _ensure_init_files(out_dir)
 
-        # Scope --proto_path to the .proto's own folder so the generated
-        # stubs use flat module names (database_tasks_pb2) rather than
-        # package-prefixed imports that would collide with our service
-        # packages of the same name.
-        proto_dir_arg = proto.parent.as_posix()
-        out_dir_arg = out_dir.as_posix()
-        proto_name = proto.name
-
+        # Scope --proto_path to each .proto's own folder so the generated
+        # stubs use flat module names rather than package-prefixed imports
+        # that would collide with our service packages of the same name.
         cmd = [
             sys.executable,
             "-m",
             "grpc_tools.protoc",
-            f"--proto_path={proto_dir_arg}",
-            f"--python_out={out_dir_arg}",
-            f"--grpc_python_out={out_dir_arg}",
-            f"--pyi_out={out_dir_arg}",
-            proto_name,
+            f"--proto_path={proto.parent.as_posix()}",
+            f"--python_out={out_dir.as_posix()}",
+            f"--grpc_python_out={out_dir.as_posix()}",
+            f"--pyi_out={out_dir.as_posix()}",
+            proto.name,
         ]
         print("-->", " ".join(cmd))
         result = subprocess.run(cmd, cwd=str(proto.parent))

@@ -1,9 +1,4 @@
-import type {
-  Task,
-  TaskCreatePayload,
-  TaskUpdatePayload,
-  VibeCheckResult,
-} from "./types";
+import type { AnalysisHistoryItem, AnalysisInsight } from "./types";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8000";
@@ -17,41 +12,24 @@ async function handle<T>(resp: Response): Promise<T> {
   return (await resp.json()) as T;
 }
 
-export async function listTasks(): Promise<Task[]> {
-  return handle(await fetch(`${API_BASE_URL}/api/tasks`, { cache: "no-store" }));
-}
-
-export async function createTask(payload: TaskCreatePayload): Promise<Task> {
+export async function analyzeLogs(rawLogs: string): Promise<AnalysisInsight> {
   return handle(
-    await fetch(`${API_BASE_URL}/api/tasks`, {
+    await fetch(`${API_BASE_URL}/api/analyze`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
+      body: JSON.stringify({ raw_logs: rawLogs }),
     }),
   );
 }
 
-export async function updateTask(
-  id: number,
-  payload: TaskUpdatePayload,
-): Promise<Task> {
+export async function listAnalyses(): Promise<AnalysisHistoryItem[]> {
   return handle(
-    await fetch(`${API_BASE_URL}/api/tasks/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    }),
+    await fetch(`${API_BASE_URL}/api/analyses`, { cache: "no-store" }),
   );
 }
 
-export async function deleteTask(id: number): Promise<void> {
+export async function deleteAnalysis(id: number): Promise<void> {
   return handle(
-    await fetch(`${API_BASE_URL}/api/tasks/${id}`, { method: "DELETE" }),
-  );
-}
-
-export async function vibeCheck(id: number): Promise<VibeCheckResult> {
-  return handle(
-    await fetch(`${API_BASE_URL}/api/tasks/${id}/vibe-check`, { method: "POST" }),
+    await fetch(`${API_BASE_URL}/api/analyses/${id}`, { method: "DELETE" }),
   );
 }

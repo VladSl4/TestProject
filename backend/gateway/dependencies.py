@@ -6,11 +6,11 @@ from functools import lru_cache
 
 import grpc
 
-import proxy_tasks_pb2_grpc as proxy_pb_grpc
+import proxy_analyses_pb2_grpc as proxy_pb_grpc
 
 from gateway.config import settings
-from gateway.interfaces.vibe_service import AbstractVibeService
-from gateway.services.vibe_service import VibeService
+from gateway.interfaces.analyzer_service import AbstractAnalyzerService
+from gateway.services.analyzer_service import AnalyzerService
 
 
 @lru_cache(maxsize=1)
@@ -20,9 +20,9 @@ def _proxy_channel():
 
 @lru_cache(maxsize=1)
 def get_proxy_client():
-    return proxy_pb_grpc.RpcTasksProxyServiceStub(_proxy_channel())
+    return proxy_pb_grpc.RpcLogsProxyServiceStub(_proxy_channel())
 
 
 @lru_cache(maxsize=1)
-def get_vibe_service() -> AbstractVibeService:
-    return VibeService(get_proxy_client())
+def get_analyzer_service() -> AbstractAnalyzerService:
+    return AnalyzerService(latency_seconds=settings.analyzer_latency_seconds)

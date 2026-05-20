@@ -1,5 +1,5 @@
-import { VibeBoard } from "@/components/VibeBoard";
+import { LogAnalyzer } from "@/components/LogAnalyzer";
 
 export default function Page() {
-  return <VibeBoard />;
+  return <LogAnalyzer />;
 }

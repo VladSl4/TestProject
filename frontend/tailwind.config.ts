@@ -8,20 +8,18 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        vibe: {
-          pending: "#fde68a",
-          progress: "#bae6fd",
-          groovy: "#bbf7d0",
+        category: {
+          info: "#22d3ee",
+          warning: "#f59e0b",
+          error: "#ef4444",
         },
       },
       fontFamily: {
         sans: ["Inter", "system-ui", "sans-serif"],
+        mono: ["JetBrains Mono", "Consolas", "monospace"],
       },
       boxShadow: {
-        vibe: "0 10px 40px -10px rgba(99, 102, 241, 0.35)",
-      },
-      animation: {
-        "pulse-slow": "pulse 3s ease-in-out infinite",
+        card: "0 20px 60px -20px rgba(56, 189, 248, 0.25)",
       },
     },
   },

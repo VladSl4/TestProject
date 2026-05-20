@@ -19,12 +19,11 @@ from fastapi import FastAPI  # noqa: E402
 from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
 
 from gateway.config import settings  # noqa: E402
-from gateway.controllers.tasks_controller import router as tasks_router  # noqa: E402
-from gateway.controllers.vibe_controller import router as vibe_router  # noqa: E402
+from gateway.controllers.analyses_controller import router as analyses_router  # noqa: E402
 
 
 def create_app() -> FastAPI:
-    app = FastAPI(title="Vibe Tasks – Gateway", version="1.0.0")
+    app = FastAPI(title="VibeLog – Gateway", version="1.0.0")
 
     app.add_middleware(
         CORSMiddleware,
@@ -34,8 +33,7 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
-    app.include_router(tasks_router)
-    app.include_router(vibe_router)
+    app.include_router(analyses_router)
 
     @app.get("/health", tags=["health"])
     def health() -> dict:

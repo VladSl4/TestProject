@@ -1,5 +1,3 @@
-"""Service configuration sourced from environment variables."""
-
 from __future__ import annotations
 
 import os
@@ -14,7 +12,7 @@ class Settings:
     port: int = int(os.getenv("DATABASE_SERVICE_PORT", "5001"))
     db_path: str = os.getenv(
         "DATABASE_SERVICE_DB_PATH",
-        str(Path(__file__).resolve().parent.parent / "vibe_tasks.db"),
+        str(Path(__file__).resolve().parent.parent / "vibelog.db"),
     )
 
 

@@ -15,13 +15,13 @@ class DatabaseContext:
         with self.connection() as conn:
             conn.execute(
                 """
-                CREATE TABLE IF NOT EXISTS tasks (
-                    id          INTEGER PRIMARY KEY AUTOINCREMENT,
-                    title       TEXT    NOT NULL,
-                    description TEXT,
-                    status      INTEGER NOT NULL DEFAULT 1,
-                    mood_emoji  TEXT,
-                    created_at  TEXT    NOT NULL
+                CREATE TABLE IF NOT EXISTS analyses (
+                    id                 INTEGER PRIMARY KEY AUTOINCREMENT,
+                    raw_logs           TEXT    NOT NULL,
+                    summary            TEXT    NOT NULL,
+                    category           INTEGER NOT NULL,
+                    recommended_action TEXT    NOT NULL,
+                    created_at         TEXT    NOT NULL
                 )
                 """
             )

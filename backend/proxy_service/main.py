@@ -21,26 +21,26 @@ for sub in ("proxy_service", "database_service"):
 
 import grpc  # noqa: E402
 
-import proxy_tasks_pb2_grpc as proxy_pb_grpc  # noqa: E402
+import proxy_analyses_pb2_grpc as proxy_pb_grpc  # noqa: E402
 
 from proxy_service.config import settings  # noqa: E402
 from proxy_service.container import build_container  # noqa: E402
-from proxy_service.services.grpc.tasks_proxy_service import TasksProxyService  # noqa: E402
+from proxy_service.services.grpc.analyses_proxy_service import AnalysesProxyService  # noqa: E402
 
 
 def serve() -> None:
     container = build_container()
 
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
-    proxy_pb_grpc.add_RpcTasksProxyServiceServicer_to_server(
-        TasksProxyService(container.proxy_tasks_service), server
+    proxy_pb_grpc.add_RpcLogsProxyServiceServicer_to_server(
+        AnalysesProxyService(container.analyses_service), server
     )
 
     address = f"{settings.host}:{settings.port}"
     server.add_insecure_port(address)
 
     def _stop(_signum, _frame):
-        print(f"[{settings.service_name}] stopping…")
+        print(f"[{settings.service_name}] stopping...")
         server.stop(grace=2).wait()
         container.close()
 

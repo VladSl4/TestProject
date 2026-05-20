@@ -1,20 +1,22 @@
-"""Composition root: builds the dependency graph for the service."""
-
 from __future__ import annotations
 
 from database_service.config import settings
-from database_service.interfaces.tasks_repository import AbstractTasksRepository
-from database_service.interfaces.tasks_service import AbstractTasksService
+from database_service.interfaces.analyses_repository import AbstractAnalysesRepository
+from database_service.interfaces.analyses_service import AbstractAnalysesService
+from database_service.repositories.analyses_repository import AnalysesRepository
 from database_service.repositories.database_context import DatabaseContext
-from database_service.repositories.tasks_repository import TasksRepository
-from database_service.services.tasks_service import TasksService
+from database_service.services.analyses_service import AnalysesService
 
 
 class Container:
     def __init__(self) -> None:
         self.db_context: DatabaseContext = DatabaseContext(settings.db_path)
-        self.tasks_repository: AbstractTasksRepository = TasksRepository(self.db_context)
-        self.tasks_service: AbstractTasksService = TasksService(self.tasks_repository)
+        self.analyses_repository: AbstractAnalysesRepository = AnalysesRepository(
+            self.db_context
+        )
+        self.analyses_service: AbstractAnalysesService = AnalysesService(
+            self.analyses_repository
+        )
 
 
 def build_container() -> Container:

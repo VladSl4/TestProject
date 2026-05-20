@@ -1,7 +1,11 @@
-# Vibe Tasks
+# VibeLog — AI-Powered Log Analyzer
 
-A "vibe-driven" todo prototype. Three Python microservices communicate over
-gRPC; a Next.js + Tailwind frontend talks REST to the gateway.
+DevOps engineers paste raw text logs, hit **Generate Insights**, and the
+backend returns a distilled JSON summary with a category and recommended
+action.
+
+Three Python microservices communicate over gRPC; a Next.js + Tailwind
+frontend talks REST to the gateway.
 
 ---
 
@@ -13,77 +17,72 @@ gRPC; a Next.js + Tailwind frontend talks REST to the gateway.
 │ Next.js :3000│           │    REST :8000    │          │    gRPC :5002    │          │ gRPC :5001+SQLite│
 └──────────────┘           └──────────────────┘          └──────────────────┘          └──────────────────┘
                             • CORS                       • Cross-cutting             • Owns the schema
-                            • Public REST API              concerns (caching,        • Repository over
-                            • Vibe Check logic             retries, fan-out)           SQLite
+                            • Public REST API              concerns (caching,        • Persists analysis
+                            • Analyzer (AI sim)            retries, fan-out)           history
                             • Typed gRPC client          • gRPC server impl
 ```
 
 Only the gateway speaks REST. The two inner services talk to each other
 entirely over gRPC.
 
+### How the analyzer works
+
+The `AnalyzerService` (in `backend/gateway/services/analyzer_service.py`)
+simulates an LLM call:
+
+1. Sleeps for `GATEWAY_ANALYZER_LATENCY_SECONDS` (default **1.0 s**, the
+   target from the brief).
+2. Splits the raw logs into lines and keyword-matches them against
+   `error|exception|fatal|critical|panic|traceback|failed|failure` and
+   `warn|warning|deprecated`.
+3. Classifies as **Error** > **Warning** > **Info** (error wins).
+4. Returns `{ summary, category, recommended_action }` and persists the
+   record through proxy → database for the history pane.
+
+To swap in a real LLM (OpenAI/Anthropic), replace the body of
+`AnalyzerService.analyze` — the interface stays the same.
+
 ### Project layout
 
 ```
 backend/
 ├── rpc/
-│   ├── protos/                       # Centralized .proto contracts
-│   │   ├── database_service/database_tasks.proto
-│   │   └── proxy_service/proxy_tasks.proto
-│   ├── generated/                    # Auto-generated Python stubs (gitignored)
-│   └── gen_protos.py                 # protoc wrapper
+│   ├── protos/
+│   │   ├── database_service/database_analyses.proto    # RpcLogsAnalysisService
+│   │   └── proxy_service/proxy_analyses.proto          # RpcLogsProxyService
+│   ├── generated/                                      # Auto-generated stubs (gitignored)
+│   └── gen_protos.py
 │
-├── database_service/
-│   ├── interfaces/                   # AbstractTasksRepository, AbstractTasksService
-│   ├── models/                       # VibeTask, VibeStatus
-│   ├── repositories/                 # SQLite-backed implementation
-│   ├── services/
-│   │   ├── tasks_service.py          # Business logic
-│   │   └── grpc/                     # gRPC server-side implementations
-│   ├── mapping/                      # proto <-> domain
-│   ├── config.py
-│   ├── container.py                  # Dependency wiring
-│   ├── main.py                       # Entry point
-│   └── requirements.txt
-│
-├── proxy_service/
-│   ├── interfaces/                   # AbstractProxyTasksService
-│   ├── services/
-│   │   ├── proxy_tasks_service.py    # Forwards to database_service over gRPC
-│   │   └── grpc/                     # gRPC server-side implementation
-│   ├── mapping/                      # proto <-> proto across the two services
-│   ├── config.py
-│   ├── container.py                  # Builds the outbound gRPC client + service
-│   ├── main.py
-│   └── requirements.txt
-│
-├── gateway/
-│   ├── interfaces/                   # AbstractVibeService
-│   ├── controllers/                  # FastAPI REST routers
-│   ├── services/                     # VibeService (uses proxy gRPC client)
-│   ├── mapping/                      # proto <-> public DTO
-│   ├── models/                       # Pydantic DTOs for the REST API
-│   ├── config.py
-│   ├── dependencies.py               # FastAPI DI providers
-│   ├── main.py
-│   └── requirements.txt
-│
+├── database_service/      # SQLite-backed CRUD over analyses
+├── proxy_service/         # Forwards gateway calls to database via gRPC
+├── gateway/               # Public REST API + AnalyzerService (AI sim)
 └── tests/
-    └── database_service/
-        ├── test_tasks_repository.py
-        ├── test_tasks_service.py
-        └── grpc/
-            └── test_tasks_data_service.py
+    ├── database_service/test_analyses_repository.py
+    └── gateway/test_analyzer_service.py
+
+frontend/
+├── app/                   # Next.js App Router
+├── components/
+│   ├── LogAnalyzer.tsx    # Main dashboard (textarea + history)
+│   ├── InsightCard.tsx
+│   ├── CategoryBadge.tsx
+│   └── HistoryList.tsx
+├── lib/
+│   ├── api.ts             # fetch wrappers
+│   └── types.ts
+└── tests/
+    └── LogAnalyzer.test.tsx  # Integration test (mocked fetch)
 ```
 
 ---
 
 ## Tech stack
 
-- **Backend:** Python 3.12+, FastAPI 0.115 (gateway only), Pydantic 2,
-  grpcio 1.66, protobuf 5.28, SQLite (stdlib `sqlite3`)
-- **Frontend:** Next.js 14 (App Router), React 18, TypeScript 5, Tailwind CSS 3
-- **Tests:** pytest (backend, including in-process gRPC servicer tests);
-  Vitest + Testing Library + Playwright (frontend)
+- **Backend:** Python 3.12+ (tested on 3.14), FastAPI, Pydantic 2, grpcio,
+  protobuf, SQLite (stdlib `sqlite3`)
+- **Frontend:** Next.js 14 (App Router), React 18, TypeScript 5,
+  Tailwind CSS 3
+- **Tests:** pytest (backend); Vitest + Testing Library (frontend)
 
 ---
 
@@ -98,7 +97,7 @@ backend/
 That runs:
 1. `pip install -r backend/requirements.txt`
 2. `python backend/rpc/gen_protos.py` — compiles every `.proto` into
-   `backend/rpc/generated/<service>/{*_pb2.py, *_pb2_grpc.py, *_pb2.pyi}`.
+   `backend/rpc/generated/<service>/`.
 
 Re-run `python backend/rpc/gen_protos.py` after editing any `.proto`.
 
@@ -107,11 +106,13 @@ Re-run `python backend/rpc/gen_protos.py` after editing any `.proto`.
 ```powershell
 cd frontend
 npm install
-copy .env.local.example .env.local   # NEXT_PUBLIC_API_BASE_URL -> http://127.0.0.1:8000
 npm run dev
 ```
 
-Open http://localhost:3000.
+Open **http://localhost:3000**.
+
+The frontend defaults to `NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:8000`.
+Set it in `.env.local` if your gateway is elsewhere.
 
 ### 3. Run the backend (three windows)
 
@@ -121,27 +122,16 @@ Open http://localhost:3000.
 
 Spins up:
 - `database_service` — gRPC at `127.0.0.1:5001`
-- `proxy_service`    — gRPC at `127.0.0.1:5002` (calls database_service)
-- `gateway`          — REST at `http://127.0.0.1:8000/docs` (calls proxy_service)
+- `proxy_service`    — gRPC at `127.0.0.1:5002`
+- `gateway`          — REST at `http://127.0.0.1:8000/docs`
 
-Or run them manually from `backend/`:
+Or run them manually from `backend/` (in three separate shells):
 
 ```powershell
 py -3 -m database_service.main
 py -3 -m proxy_service.main
 py -3 -m gateway.main
 ```
-
----
-
-## Features
-
-- **CRUD** for Vibe Tasks (create, list, status transition, delete).
-- **Vibe Check button** — `POST /api/tasks/{id}/vibe-check` (gateway) picks a
-  random mood emoji + caption from a curated palette and writes the emoji
-  onto the task through the proxy -> database gRPC pipeline.
-- **Optimistic UI** — create/update/delete reconcile from server responses.
-- **Three columns** — Pending -> In-Progress -> Groovy.
 
 ---
 
@@ -154,55 +144,69 @@ cd backend
 py -3 -m pytest
 ```
 
-Covers:
+Covers (8 tests):
+- `tests/gateway/test_analyzer_service.py` — analyzer logic (empty input,
+  info-only, warning detection, error-wins-over-warning, latency).
+- `tests/database_service/test_analyses_repository.py` — repository CRUD
+  against a temp SQLite file.
 
-1. `tests/database_service/test_tasks_repository.py` — 4 repository CRUD tests
-   against a real (temp) SQLite file.
-2. `tests/database_service/test_tasks_service.py` — 3 business-service tests.
-3. `tests/database_service/grpc/test_tasks_data_service.py` — gRPC server-side
-   test of the task-creation RPC.
-
-> The gRPC tests need the generated stubs. If you skipped step 1 of install,
-> run `python backend/rpc/gen_protos.py` first or those tests will be skipped.
-
-### Frontend
+### Frontend (Vitest + Testing Library)
 
 ```powershell
 cd frontend
-npm test                  # Vitest — list rendering
-npm run test:e2e          # Playwright — task creation flow
+npm test
 ```
+
+Integration test in `tests/LogAnalyzer.test.tsx` mocks `fetch` and
+verifies:
+- The dashboard renders the backend insight (summary + recommended action
+  + category badge) after Generate Insights is clicked.
+- A failed API call surfaces an error banner instead of an insight.
+- The button is disabled while the analysis is in flight.
 
 ---
 
 ## Public API (gateway, REST, port 8000)
 
-| Method | Path                              | Purpose                                    |
-|--------|-----------------------------------|--------------------------------------------|
-| GET    | `/api/tasks`                      | List all Vibe Tasks                        |
-| GET    | `/api/tasks/{id}`                 | Get a single Vibe Task                     |
-| POST   | `/api/tasks`                      | Create a task `{ title, description? }`    |
-| PATCH  | `/api/tasks/{id}`                 | Update title/description/status/mood_emoji |
-| DELETE | `/api/tasks/{id}`                 | Delete a task                              |
-| POST   | `/api/tasks/{id}/vibe-check`      | Run mock vibe analysis — returns a mood    |
-| GET    | `/health`                         | Liveness probe                             |
+```
+POST   /api/analyze            Body { raw_logs } -> { id, summary, category, recommended_action, created_at }
+GET    /api/analyses           Recent analyses (newest first) for the history pane
+DELETE /api/analyses/{id}      Remove a history entry
+GET    /health                 Liveness probe
+```
 
-`VibeStatus` values exposed by REST: `"Pending" | "InProgress" | "Groovy"`.
+`category` values: `"Info" | "Warning" | "Error"`.
 
 ### Internal gRPC surface
 
 ```
-database_service -> service vibetasks.database.RpcTasksDataService  { ListTasks, GetTask, CreateTask, UpdateTask, DeleteTask }
-proxy_service    -> service vibetasks.proxy.RpcTasksProxyService    { ListTasks, GetTask, CreateTask, UpdateTask, DeleteTask }
+database_service -> service vibelog.database.RpcLogsAnalysisService  { List, Get, Save, Delete }
+proxy_service    -> service vibelog.proxy.RpcLogsProxyService        { List, Get, Save, Delete }
 ```
 
 Browse the contracts under `backend/rpc/protos/`.
 
 ---
 
+## UX behaviour
+
+- **Loading state** — while the analyzer runs (≥ 1 s), the button is
+  disabled, the textarea is read-only, and a `"Talking to the AI…"`
+  pulse appears.
+- **Error state** — if the gateway returns non-2xx (or the network
+  fails), the dashboard shows a dismissable red banner with the API
+  error message.
+- **Acceptance latency** — 1 s analyzer delay + sub-100 ms gRPC + sub-50 ms
+  React render = well under the 5 s budget from the brief.
+
+---
+
 ## Notes
 
-- SQLite file lives at `backend/vibe_tasks.db` (auto-created on first run).
+- SQLite file lives at `backend/vibelog.db` (auto-created on first run).
   Override with `DATABASE_SERVICE_DB_PATH`.
 - Inter-service addresses are env-driven (`DATABASE_SERVICE_ADDRESS`,
-  `PROXY_SERVICE_ADDRESS`, `GATEWAY_CORS_ORIGINS`). Defaults assume localhost.
+  `PROXY_SERVICE_ADDRESS`, `GATEWAY_CORS_ORIGINS`,
+  `GATEWAY_ANALYZER_LATENCY_SECONDS`). Defaults assume localhost.
+- Setting `GATEWAY_ANALYZER_LATENCY_SECONDS=0` removes the simulated
+  delay (useful in CI).

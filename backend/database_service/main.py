@@ -1,6 +1,6 @@
 """Entry point for the database service.
 
-Run from the ``backend/`` directory::
+Run from ``backend/``::
 
     python -m database_service.main
 """
@@ -19,26 +19,26 @@ if str(_GENERATED) not in sys.path:
 
 import grpc  # noqa: E402
 
-import database_tasks_pb2_grpc as pb_grpc  # noqa: E402
+import database_analyses_pb2_grpc as pb_grpc  # noqa: E402
 
 from database_service.config import settings  # noqa: E402
 from database_service.container import build_container  # noqa: E402
-from database_service.services.grpc.tasks_data_service import TasksDataService  # noqa: E402
+from database_service.services.grpc.analyses_data_service import AnalysesDataService  # noqa: E402
 
 
 def serve() -> None:
     container = build_container()
 
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
-    pb_grpc.add_RpcTasksDataServiceServicer_to_server(
-        TasksDataService(container.tasks_service), server
+    pb_grpc.add_RpcLogsAnalysisServiceServicer_to_server(
+        AnalysesDataService(container.analyses_service), server
     )
 
     address = f"{settings.host}:{settings.port}"
     server.add_insecure_port(address)
 
     def _stop(_signum, _frame):
-        print(f"[{settings.service_name}] stopping…")
+        print(f"[{settings.service_name}] stopping...")
         server.stop(grace=2).wait()
 
     signal.signal(signal.SIGINT, _stop)

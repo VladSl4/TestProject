@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Vibe Tasks — WebaResponds",
-  description: "Vibe-Driven Todo. No deadlines, just energy.",
+  title: "VibeLog — AI Log Analyzer",
+  description: "Paste raw logs, get an AI-distilled summary.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
